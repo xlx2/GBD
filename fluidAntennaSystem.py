@@ -3,13 +3,19 @@ from utils import dB2pow
 
 
 class FluidAntennaSystem:
-    def __init__(self, numOfYaxisAntennas: int, numOfUsers: int,
-                 numOfXaxisAntennas: int = 1,
-                 noiseVariance=dB2pow(-10), Wx=1, Wy=1):
+    def __init__(
+        self,
+        numOfYaxisAntennas: int,
+        numOfUsers: int,
+        numOfXaxisAntennas: int = 1,
+        noiseVariance=dB2pow(-10),
+        Wx=1,
+        Wy=1
+    ):
         self.Nx = numOfXaxisAntennas
         self.Ny = numOfYaxisAntennas
         if self.Ny == 1:
-            raise ValueError("Please set numOfXaxisAntennas to zero instead.\n")
+            raise ValueError("If you want a linear antenna array, please set numOfXaxisAntennas to zero instead.\n")
         self.K = numOfUsers
         self.sigma2 = noiseVariance
         self.Wx = Wx
