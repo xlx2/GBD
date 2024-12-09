@@ -1,13 +1,13 @@
-from utils import dBm2pow, dB2pow
-from fluidAntennaSystem import FluidAntennaSystem
+from utils import dB2pow
+from fluid_antenna_system import FluidAntennaSystem
 import numpy as np
 
-np.random.seed(1)  # fix the random parameters
+np.random.seed(100)  # fix the random parameters
 
 # Initialization
 NUM_OF_USERS = 5
 NUM_OF_ANTENNAS = 16
-NUM_OF_SELECTED_ANTENNAS = 16
+NUM_OF_SELECTED_ANTENNAS = 8
 CHANNEL_NOISE = dB2pow(-10)
 QOS_THRESHOLD = dB2pow(12)
 DOA = np.pi / 6

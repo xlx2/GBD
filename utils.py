@@ -50,3 +50,29 @@ def get_boolean_vector(N: int, numOfOnes: int) -> np.ndarray:
     x[selected_indices, :] = 1
     return x
 
+
+def create_block_diag_matrix(X: np.ndarray) -> np.ndarray:
+    """
+    Constructs a block diagonal matrix from the columns of the input matrix X.
+    Each column of H is placed as the diagonal elements of a block in the resulting matrix.
+
+    :param X: A 2D numpy array of shape (N, K), where N is the number of rows and
+              K is the number of columns.
+    :return: A 2D numpy array of shape (N, N * K), representing the block diagonal matrix.
+             The diagonal blocks correspond to the columns of H.
+    """
+    if not isinstance(X, np.ndarray):
+        raise TypeError("Input H must be a numpy ndarray.")
+    if X.ndim != 2:
+        raise ValueError("Input H must be a 2D array.")
+
+    N, K = X.shape  # Extract dimensions of the input matrix
+    block_diag_matrix = np.zeros((N, N * K), dtype=np.complex128)  # Initialize the output block diagonal matrix
+
+    for k in range(K):
+        # Place each column of H as the diagonal block in the output matrix
+        block_diag_matrix[:, k * N:(k + 1) * N] = np.diag(X[:, k])
+
+    return block_diag_matrix
+
+
