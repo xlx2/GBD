@@ -1,18 +1,18 @@
 import numpy as np
 import cvxpy as cp
-from utils import get_boolean_vector, create_block_diag_matrix
+from consts import Parameters
+from utils import create_boolean_vector, create_block_diag_matrix
 
 
 class GBDSolver:
     def __init__(self, parameters):
         self.H = parameters['channel']  # Channel Matrix (N x K)
-        self.K = parameters['numOfUsers']  # User Number (constant)
-        self.N = parameters['numOfAntennas']  # Port Number (constant)
-        self.N_sel = parameters[
-            'numOfSelectedAntennas']  # Selected Port Number (constant)
-        self.gamma = parameters['qosThreshold']  # QoS Threshold (constant)
-        self.sigmaC2 = parameters['channelNoise']  # Channel Noise (constant)
-        self.theta = parameters['doa']  # DOA (constant)
+        self.K = parameters['numOfUsers']  # User Number
+        self.N = parameters['numOfAntennas']  # Port Number
+        self.N_sel = parameters['numOfSelectedAntennas']  # Selected Port Number
+        self.gamma = parameters['qosThreshold']  # QoS Threshold
+        self.sigmaC2 = parameters['channelNoise']  # Channel Noise
+        self.theta = parameters['doa']  # DOA
         self.b = parameters['steeringVector']  # Steering Vector (N x 1)
 
         self.feasibilityCut = {
@@ -28,22 +28,26 @@ class GBDSolver:
     def prime_problem_solver(self, lambda_old=None, verbose=False) -> (bool, float):
         # Initialize Boolean Variable
         if lambda_old is None:
-            lambda_old = get_boolean_vector(self.N, self.N_sel)
+            lambda_old = create_boolean_vector(self.N, self.N_sel)
 
         # Define CVXPY Variables
-        W = cp.Variable((self.N, self.N), hermitian=True)
+        W = cp.Variable((self.N, self.N), complex=True)
 
         # Constraints
         constraints = []
 
         # Qos Constraint
         for k in range(self.K):
-            lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(self.H[:, k].T @ np.diag(lambda_old[:, 0]) @ W[:, k])
-            rhs = cp.norm(create_block_diag_matrix(
-                np.repeat((self.H[:, k].T @ np.diag(lambda_old[:, 0])).reshape((self.N, 1)), self.N, axis=1)) @
+            lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+            rhs = cp.norm(np.vstack(
+                [create_block_diag_matrix((self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.N),
+                 np.zeros([1, self.N * self.N])]) @
                           W.reshape((W.size, 1), 'F') +
-                          np.vstack((np.zeros((self.N, 1)), np.array([[np.sqrt(self.sigmaC2)]]))), 2)
+                          np.vstack([np.zeros([self.N, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
             constraints.append(rhs - lhs <= 0)
+
+        for k in range(self.K):
+            constraints.append(cp.imag(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1]) == 0)
 
         # Define the objective function
         objective = cp.Minimize(cp.sum_squares(np.diag(lambda_old[:, 0]) @ W))
@@ -64,14 +68,13 @@ class GBDSolver:
 
         return feasibility, problem.value
 
-    def feasibility_check_problem_solver(self, lambda_old=None,
-                                         verbose=False) -> bool:
+    def feasibility_check_problem_solver(self, lambda_old=None, verbose=False) -> bool:
         # Initialize Boolean Variable
         if lambda_old is None:
-            lambda_old = get_boolean_vector(self.N, self.N_sel)
+            lambda_old = create_boolean_vector(self.N, self.N_sel)
 
         # Define CVXPY Variables
-        W = cp.Variable((self.N, self.N), hermitian=True)
+        W = cp.Variable((self.N, self.N), complex=True)
         alpha = cp.Variable((self.K, 1))
 
         # Constraints
@@ -79,12 +82,16 @@ class GBDSolver:
 
         # Qos Constraint
         for k in range(self.K):
-            lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(self.H[:, k].T @ np.diag(lambda_old[:, 0]) @ W[:, k])
-            rhs = cp.norm(create_block_diag_matrix_with_extra_zero_row(
-                np.repeat((self.H[:, k].T @ np.diag(lambda_old[:, 0])).reshape((self.N, 1)), self.N, axis=1)) @
+            lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+            rhs = cp.norm(np.vstack(
+                [create_block_diag_matrix((self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.N),
+                 np.zeros([1, self.N * self.N])]) @
                           W.reshape((W.size, 1), 'F') +
-                          np.vstack((np.zeros((self.N, 1)), np.array([[np.sqrt(self.sigmaC2)]]))), 2)
+                          np.vstack([np.zeros([self.N, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
             constraints.append(rhs - lhs <= alpha[k])
+
+        for k in range(self.K):
+            constraints.append(cp.imag(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1]) == 0)
 
         # Non-negative Constraint
         for k in range(self.K):
@@ -121,30 +128,29 @@ class GBDSolver:
         for j in range(len(self.feasibilityCut['W'])):
             W = self.feasibilityCut['W'][j]
             miu = self.feasibilityCut['miu'][j]
-            objective = cp.real(cp.sum_squares(cp.diag(lambda_old[:, 0]) @ W))
+            obj = cp.real(cp.sum_squares(cp.diag(lambda_old[:, 0]) @ W))
             lagrange_terms = []
-            block_diag_np = np.zeros((self.N, self.N * self.N))
-            for n in range(self.N):
-                block_diag_np[n, n * self.N:(n + 1) * self.N] = lambda_old.T
-            block_diag_cvxpy = cp.Constant(block_diag_np)
-            zero_row = cp.Constant(np.zeros((1, self.N * self.N)))
-            result = cp.vstack([block_diag_cvxpy, zero_row])
             for k in range(self.K):
-                lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(self.H[:, k].T @ cp.diag(lambda_old[:, 0]) @ W[:, k])
-                rhs = cp.norm(result @ (np.diag(self.H[:, k]) @ W).reshape((self.N**2, 1), 'F') +
-                              np.vstack((np.zeros((self.N, 1)), np.array([[np.sqrt(self.sigmaC2)]]))), 2)
-                lagrange_terms.append(miu[k] * (rhs - lhs))
-            constraints.append(eta >= objective + sum(lagrange_terms))
+                lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ cp.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+                rhs = cp.norm(lambda_old.T @ np.hstack([np.diag(self.H[:, k]) @ W, np.zeros([self.N, 1])]) +
+                              np.hstack([np.zeros([1, self.N]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
+                lagrange_terms.append(miu[k, 0] * (rhs - lhs))
+            constraints.append(eta >= obj + sum(lagrange_terms))
 
-        # if len(self.infeasibilityCut['W']) != 0:
-        #     for j in range(len(self.infeasibilityCut['W'])):
-        #         W1 = self.infeasibilityCut['W'][j]
-        #         zeta = self.infeasibilityCut['zeta'][j]
-        #         alpha = self.infeasibilityCut['alpha'][j]
-        #         Lagrange1 = 0
-        #         for k in range(self.K):
-        #
-        #         constraints.append(0 >= Lagrange1)
+        if len(self.infeasibilityCut['W']) != 0:
+            for j in range(len(self.infeasibilityCut['W'])):
+                W = self.infeasibilityCut['W'][j]
+                alpha = self.infeasibilityCut['alpha'][j]
+                zeta = self.infeasibilityCut['zeta'][j]
+                obj = 0
+                lagrange_terms = []
+                for k in range(self.K):
+                    lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(
+                        self.H[:, k:k + 1].T @ cp.diag(lambda_old[:, 0]) @ W[:, k:k + 1])
+                    rhs = cp.norm(lambda_old.T @ np.hstack([np.diag(self.H[:, k]) @ W, np.zeros([self.N, 1])]) +
+                                  np.hstack([np.zeros([1, self.N]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
+                    lagrange_terms.append(zeta[k, 0] * (rhs - lhs - alpha[k, 0]))
+                constraints.append(0 >= obj + sum(lagrange_terms))
 
         # Define the objective function
         objective = cp.Minimize(eta)

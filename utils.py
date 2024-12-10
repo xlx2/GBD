@@ -1,5 +1,5 @@
 import numpy as np
-
+import cvxpy as cp
 
 def pow2dB(x):
     return 10 * np.log10(x)
@@ -33,45 +33,50 @@ def eigenvalue_decomposition(XX_H) -> np.ndarray:
     return X
 
 
-def get_boolean_vector(N: int, numOfOnes: int) -> np.ndarray:
+def create_boolean_vector(length_of_vector: int, num_of_ones: int) -> np.ndarray:
     """
     This function generates a boolean vector of size N,
     containing numOfOnes random distributed 1, and the rest 0.
-    :param N: Length of the vector
-    :param numOfOnes: Number of random 1s
-    :return: Boolean vector of size N
+    :param length_of_vector: Length of the vector
+    :param num_of_ones: Number of random ones
+    :return: Boolean vector
     """
-    if N <= 0:
-        raise ValueError("N must be greater than 0.")
-    if numOfOnes > N:
-        raise ValueError("numOfOnes must be less than or equal to N.")
-    x = np.zeros((N, 1))
-    selected_indices = np.random.choice(N, numOfOnes, replace=False)
+    if length_of_vector <= 0:
+        raise ValueError("length_of_vector must be greater than 0.")
+    if num_of_ones > length_of_vector:
+        raise ValueError("num_of_ones must be less than or equal to N.")
+    x = np.zeros((length_of_vector, 1))
+    selected_indices = np.random.choice(length_of_vector, num_of_ones, replace=False)
     x[selected_indices, :] = 1
     return x
 
 
-def create_block_diag_matrix(X: np.ndarray) -> np.ndarray:
+def create_block_diag_matrix(x: np.ndarray, repeat: int = None) -> np.ndarray:
     """
-    Constructs a block diagonal matrix from the columns of the input matrix X.
-    Each column of H is placed as the diagonal elements of a block in the resulting matrix.
-
-    :param X: A 2D numpy array of shape (N, K), where N is the number of rows and
-              K is the number of columns.
-    :return: A 2D numpy array of shape (N, N * K), representing the block diagonal matrix.
-             The diagonal blocks correspond to the columns of H.
+    This function creates a block diagonal matrix from an input x.
+    If x is a column vector, it first repeats the vector to form a matrix with a shape of (row, repeat).
+    If x is a matrix, it directly forms the block diagonal matrix.
+    :param x: Input 2D numpy ndarray
+    :param repeat: Number of times to repeat the vector, and None for matrix
+    :return: Block diagonal matrix
     """
-    if not isinstance(X, np.ndarray):
-        raise TypeError("Input H must be a numpy ndarray.")
-    if X.ndim != 2:
-        raise ValueError("Input H must be a 2D array.")
+    if not isinstance(x, np.ndarray):
+        raise TypeError("Input must be a numpy ndarray.")
+    if x.ndim != 2:
+        raise TypeError("Input must be a 2D array.")
 
-    N, K = X.shape  # Extract dimensions of the input matrix
-    block_diag_matrix = np.zeros((N, N * K), dtype=np.complex128)  # Initialize the output block diagonal matrix
+    row, column = x.shape
+    if column == 1:  # X is a column vector
+        if repeat is None:
+            raise ValueError("`repeat` must be provided when the input is a column vector.")
+        x = np.repeat(x, repeat, axis=1)  # Repeat the column vector to form a matrix with a shape of (row, repeat)
+        column = repeat
 
-    for k in range(K):
-        # Place each column of H as the diagonal block in the output matrix
-        block_diag_matrix[:, k * N:(k + 1) * N] = np.diag(X[:, k])
+    block_diag_matrix = np.zeros((column, row * column), dtype=np.complex128)
+
+    for col in range(column):
+        for r in range(row):
+            block_diag_matrix[col, r + col * row] = x[r, col]
 
     return block_diag_matrix
 

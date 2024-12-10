@@ -7,7 +7,7 @@ np.random.seed(100)  # fix the random parameters
 # Initialization
 NUM_OF_USERS = 5
 NUM_OF_ANTENNAS = 16
-NUM_OF_SELECTED_ANTENNAS = 8
+NUM_OF_SELECTED_ANTENNAS = 5
 CHANNEL_NOISE = dB2pow(-10)
 QOS_THRESHOLD = dB2pow(12)
 DOA = np.pi / 6

@@ -1,4 +1,7 @@
 import numpy as np
 
-A = np.vstack([np.array([[1,2,3]]), np.array([[4,5,6]]), np.array([[7,8,9]])])
-print(A)
+from utils import create_block_diag_matrix
+
+H = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+print(np.hstack([np.zeros([2, 3]), np.array([[np.sqrt(2)],[1]])]))
