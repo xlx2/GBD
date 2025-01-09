@@ -2,26 +2,38 @@ from utils import dB2pow
 from fluid_antenna_system import FluidAntennaSystem
 import numpy as np
 
-np.random.seed(100)  # fix the random parameters
+np.random.seed(1)  # fix the random parameters
 
 # Initialization
-NUM_OF_USERS = 5
-NUM_OF_ANTENNAS = 16
-NUM_OF_SELECTED_ANTENNAS = 5
-CHANNEL_NOISE = dB2pow(-10)
-QOS_THRESHOLD = dB2pow(12)
-DOA = np.pi / 6
-indices = np.arange(0, (NUM_OF_ANTENNAS - 1) + 1).reshape(-1, 1)
-STEERING_VECTOR = np.exp(-1j * np.pi * indices * np.sin(DOA))
+NUM_OF_USERS: int = 5
+NUM_OF_ANTENNAS: int = 16
+NUM_OF_SELECTED_ANTENNAS: int = 16
+CHANNEL_NOISE: float = dB2pow(-10)
+SENSING_NOISE: float = dB2pow(10)
+REFLECTION_COEFFICIENT: float = dB2pow(0)
+QOS_THRESHOLD: float = dB2pow(12)
+EVE_SENSING_THRESHOLD: float = dB2pow(12)
+CRB_THRESHOLD: float = dB2pow(0)
+DOA: np.ndarray = np.array([[np.pi / 6]])
+indices: np.ndarray = np.arange(0, (NUM_OF_ANTENNAS - 1) + 1).reshape(-1, 1)
+STEERING_VECTOR: np.ndarray = np.exp(-1j * np.pi * indices * np.sin(DOA))
+DIFF_STEERING_VECTOR: np.ndarray = -1j * np.pi * indices * np.cos(DOA) * STEERING_VECTOR
 
 fas = FluidAntennaSystem(numOfYaxisAntennas=NUM_OF_ANTENNAS, numOfUsers=NUM_OF_USERS)
 CHANNEL, _, _, _ = fas.get_channel()
 
-Parameters = {"numOfAntennas": NUM_OF_ANTENNAS,
-              "numOfUsers": NUM_OF_USERS,
-              "numOfSelectedAntennas": NUM_OF_SELECTED_ANTENNAS,
-              "qosThreshold": QOS_THRESHOLD,
-              "channelNoise": CHANNEL_NOISE,
-              "doa": DOA,
-              "steeringVector": STEERING_VECTOR,
-              "channel": CHANNEL}
+Parameters = {
+    "numOfAntennas": NUM_OF_ANTENNAS,
+    "numOfUsers": NUM_OF_USERS,
+    "numOfSelectedAntennas": NUM_OF_SELECTED_ANTENNAS,
+    "qosThreshold": QOS_THRESHOLD,
+    "eveSensingThreshold": EVE_SENSING_THRESHOLD,
+    "crbThreshold": CRB_THRESHOLD,
+    "reflectionCoefficient": REFLECTION_COEFFICIENT,
+    "channelNoise": CHANNEL_NOISE,
+    "sensingNoise": SENSING_NOISE,
+    "doa": DOA,
+    "steeringVector": STEERING_VECTOR,
+    "diffSteeringVector": DIFF_STEERING_VECTOR,
+    "channel": CHANNEL
+}

@@ -1,7 +1,7 @@
 import numpy as np
 import cvxpy as cp
-from consts import Parameters
-from utils import create_boolean_vector, create_block_diag_matrix
+from before.consts import Parameters
+from before.utils import create_boolean_vector, create_block_diag_matrix
 
 
 class GBDSolver:
@@ -11,9 +11,14 @@ class GBDSolver:
         self.N = parameters['numOfAntennas']  # Port Number
         self.N_sel = parameters['numOfSelectedAntennas']  # Selected Port Number
         self.gamma = parameters['qosThreshold']  # QoS Threshold
+        self.snr_up = parameters['sensingUpperThreshold']  # Sensing Upper Threshold
+        self.snr_low = parameters['sensingLowerThreshold']  # Sensing Lower Threshold
         self.sigmaC2 = parameters['channelNoise']  # Channel Noise
+        self.sigmaR2 = parameters['sensingNoise']  # Sensing Noise
+        self.beta = parameters['reflectionCoefficient']
         self.theta = parameters['doa']  # DOA
         self.b = parameters['steeringVector']  # Steering Vector (N x 1)
+        self.A = self.beta * self.b @ self.b.T
 
         self.feasibilityCut = {
             'W': [],
@@ -31,23 +36,33 @@ class GBDSolver:
             lambda_old = create_boolean_vector(self.N, self.N_sel)
 
         # Define CVXPY Variables
-        W = cp.Variable((self.N, self.N), complex=True)
-
+        W = cp.Variable((self.N, self.K+self.N), complex=True)
+        Wc = W[:, 0:self.K]
+        Wr = W[:, self.K:self.K+self.N]
         # Constraints
         constraints = []
 
         # Qos Constraint
         for k in range(self.K):
-            lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+            lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(
+                self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0]) @ Wc[:, k:k + 1])
             rhs = cp.norm(np.vstack(
-                [create_block_diag_matrix((self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.N),
-                 np.zeros([1, self.N * self.N])]) @
-                          W.reshape((W.size, 1), 'F') +
-                          np.vstack([np.zeros([self.N, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
+                [create_block_diag_matrix((self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.K),
+                 np.zeros([1, self.N * self.K])]) @
+                          Wc.reshape((Wc.size, 1), 'F') +
+                          np.vstack([np.zeros([self.K, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
             constraints.append(rhs - lhs <= 0)
 
+        # Sensing SNR Constraint
+        constraints.append(cp.sum_squares(np.conj(self.b[:, 0:1].T) @ Wc) - self.snr_low * self.sigmaR2 <= 0)
+        # constraints.append(cp.real(cp.norm(create_block_diag_matrix(np.conj(self.b[:, 1:2]), repeat=self.N) @
+        #                    Wr.reshape((Wr.size, 1), 'F'), 2)
+        #                    - np.sqrt(self.snr_up * self.sigmaR2 / self.beta)) >= 0)
+        # constraints.append(cp.imag(create_block_diag_matrix(np.conj(self.b[:, 1:2]), repeat=self.N) @
+        #                            Wr.reshape((Wr.size, 1), 'F')) == 0)
+
         for k in range(self.K):
-            constraints.append(cp.imag(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1]) == 0)
+            constraints.append(cp.imag(self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0]) @ Wc[:, k:k + 1]) == 0)
 
         # Define the objective function
         objective = cp.Minimize(cp.sum_squares(np.diag(lambda_old[:, 0]) @ W))
@@ -74,7 +89,9 @@ class GBDSolver:
             lambda_old = create_boolean_vector(self.N, self.N_sel)
 
         # Define CVXPY Variables
-        W = cp.Variable((self.N, self.N), complex=True)
+        W = cp.Variable((self.N, self.K + self.N), complex=True)
+        Wc = W[:, 0:self.K]
+        Wr = W[:, self.K:self.K + self.N]
         alpha = cp.Variable((self.K, 1))
 
         # Constraints
@@ -82,16 +99,17 @@ class GBDSolver:
 
         # Qos Constraint
         for k in range(self.K):
-            lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+            lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(
+                self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0]) @ Wc[:, k:k + 1])
             rhs = cp.norm(np.vstack(
-                [create_block_diag_matrix((self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.N),
-                 np.zeros([1, self.N * self.N])]) @
-                          W.reshape((W.size, 1), 'F') +
-                          np.vstack([np.zeros([self.N, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
+                [create_block_diag_matrix((self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0])).T, repeat=self.K),
+                 np.zeros([1, self.N * self.K])]) @
+                          Wc.reshape((Wc.size, 1), 'F') +
+                          np.vstack([np.zeros([self.K, 1]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
             constraints.append(rhs - lhs <= alpha[k])
 
         for k in range(self.K):
-            constraints.append(cp.imag(self.H[:, k:k+1].T @ np.diag(lambda_old[:, 0]) @ W[:, k:k+1]) == 0)
+            constraints.append(cp.imag(self.H[:, k:k + 1].T @ np.diag(lambda_old[:, 0]) @ Wc[:, k:k + 1]) == 0)
 
         # Non-negative Constraint
         for k in range(self.K):
@@ -131,7 +149,8 @@ class GBDSolver:
             obj = cp.real(cp.sum_squares(cp.diag(lambda_old[:, 0]) @ W))
             lagrange_terms = []
             for k in range(self.K):
-                lhs = np.sqrt(1 + 1/self.gamma) * cp.real(self.H[:, k:k+1].T @ cp.diag(lambda_old[:, 0]) @ W[:, k:k+1])
+                lhs = np.sqrt(1 + 1 / self.gamma) * cp.real(
+                    self.H[:, k:k + 1].T @ cp.diag(lambda_old[:, 0]) @ W[:, k:k + 1])
                 rhs = cp.norm(lambda_old.T @ np.hstack([np.diag(self.H[:, k]) @ W, np.zeros([self.N, 1])]) +
                               np.hstack([np.zeros([1, self.N]), np.array([[np.sqrt(self.sigmaC2)]])]), 2)
                 lagrange_terms.append(miu[k, 0] * (rhs - lhs))
@@ -164,3 +183,7 @@ class GBDSolver:
         else:
             raise Exception('Master Problem is Infeasible!')
 
+
+if __name__ == '__main__':
+    solver = GBDSolver(Parameters)
+    print(solver.prime_problem_solver(verbose=True))

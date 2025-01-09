@@ -1,7 +1,6 @@
 import numpy as np
 import cvxpy as cp
 
-
 def pow2dB(x):
     return 10 * np.log10(x)
 
@@ -55,8 +54,7 @@ def create_boolean_vector(length_of_vector: int, num_of_ones: int) -> np.ndarray
 def create_block_diag_matrix(x: np.ndarray, repeat: int = None) -> np.ndarray:
     """
     This function creates a block diagonal matrix from an input x.
-    If x is a column vector, it first repeats the vector to form a matrix with a shape of (row, repeat), then it
-    repeats the matrix to form a block diagonal matrix.
+    If x is a column vector, it first repeats the vector to form a matrix with a shape of (row, repeat).
     If x is a matrix, it directly forms the block diagonal matrix.
     :param x: Input 2D numpy ndarray
     :param repeat: Number of times to repeat the vector, and None for matrix
@@ -81,3 +79,5 @@ def create_block_diag_matrix(x: np.ndarray, repeat: int = None) -> np.ndarray:
             block_diag_matrix[col, r + col * row] = x[r, col]
 
     return block_diag_matrix
+
+
