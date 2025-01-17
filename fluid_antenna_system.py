@@ -1,23 +1,23 @@
 import numpy as np
-from before.utils import dB2pow
 
 
 class FluidAntennaSystem:
     def __init__(
         self,
-        numOfYaxisAntennas: int,
-        numOfUsers: int,
-        numOfXaxisAntennas: int = 1,
-        noiseVariance=dB2pow(-10),
+        num_of_yaxis_antennas: int,
+        num_of_users: int,
+        noise_variance: float,
+        num_of_xaxis_antennas: int = 1,
         Wx=1,
         Wy=1
     ):
-        self.Nx = numOfXaxisAntennas
-        self.Ny = numOfYaxisAntennas
+        self.Nx = num_of_xaxis_antennas
+        self.Ny = num_of_yaxis_antennas
         if self.Ny == 1:
-            raise ValueError("If you want a linear antenna array, please set numOfXaxisAntennas to zero instead.\n")
-        self.K = numOfUsers
-        self.sigma2 = noiseVariance
+            raise ValueError("If you want a linear antenna array,"
+                             " please set num_of_xaxis_antennas to one instead.\n")
+        self.K = num_of_users
+        self.sigma2 = noise_variance
         self.Wx = Wx
         self.Wy = Wy
         self.N = self.Nx * self.Ny
@@ -40,10 +40,8 @@ class FluidAntennaSystem:
 
         for i in range(self.N):
             if (self.Nx - 1) != 0:
-                d1[:, i] = np.abs(self.ntx1[i] - self.ntx1) / (
-                        self.Nx - 1) * self.Wx
-            d2[:, i] = np.abs(self.ntx2[i] - self.ntx2) / (
-                    self.Ny - 1) * self.Wy
+                d1[:, i] = np.abs(self.ntx1[i] - self.ntx1) / (self.Nx - 1) * self.Wx
+            d2[:, i] = np.abs(self.ntx2[i] - self.ntx2) / (self.Ny - 1) * self.Wy
 
         d = np.sqrt(d1 ** 2 + d2 ** 2)  # Total distance
         J = self.sigma2 * np.sinc(2 * np.pi * d)  # Spatial correlation
@@ -52,18 +50,10 @@ class FluidAntennaSystem:
         return J, d1, d2, d
 
     def get_channel(self):
-        g = np.sqrt(0.5) * (np.random.randn(self.N, self.K) +
-                            1j * np.random.randn(self.N, self.K))
+        g = np.sqrt(0.5) * (np.random.randn(self.N, self.K) + 1j * np.random.randn(self.N, self.K))
         h = np.zeros((self.N, self.K), dtype=complex)
-        H = np.zeros((self.Nx, self.Ny, self.K), dtype=complex)
-        phi = np.zeros((self.N, self.K))
-        theta = np.zeros((self.Nx, self.Ny, self.K))
 
         for k in range(self.K):
-            h[:, k] = np.conj(g[:, k].T) @ np.sqrt(
-                np.conj(self.Ltx.T)) @ np.conj(self.Utx.T)
-            phi[:, k] = np.angle(h[:, k]) % (2 * np.pi)
-            H[:, :, k] = h[:, k].reshape(self.Nx, self.Ny)
-            theta[:, :, k] = (np.angle(H[:, :, k]) + 2 * np.pi) % (2 * np.pi)
+            h[:, k:k+1] = self.Utx @ self.Ltx.T @ g[:, k:k+1]
 
-        return h, phi, H, theta
+        return h

@@ -15,7 +15,7 @@ class FluidAntennaSystem:
         self.Nx = numOfXaxisAntennas
         self.Ny = numOfYaxisAntennas
         if self.Ny == 1:
-            raise ValueError("If you want a linear antenna array, please set numOfXaxisAntennas to zero instead.\n")
+            raise ValueError("If you want a linear antenna array, please set num_of_xaxis_antennas to zero instead.\n")
         self.K = numOfUsers
         self.sigma2 = noiseVariance
         self.Wx = Wx

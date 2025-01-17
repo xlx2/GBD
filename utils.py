@@ -44,9 +44,9 @@ def create_boolean_vector(length_of_vector: int, num_of_ones: int) -> np.ndarray
     :return: Boolean vector
     """
     if length_of_vector <= 0:
-        raise ValueError("length_of_vector must be greater than 0.")
+        raise ValueError("The length of the vector must be greater than 0.")
     if num_of_ones > length_of_vector:
-        raise ValueError("num_of_ones must be less than or equal to N.")
+        raise ValueError("The number of ones in the vector must be less than or equal to N.")
     x = np.zeros((length_of_vector, 1))
     selected_indices = np.random.choice(length_of_vector, num_of_ones, replace=False)
     x[selected_indices, :] = 1

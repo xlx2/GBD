@@ -7,8 +7,8 @@ np.random.seed(1)  # fix the random parameters
 # Initialization
 NUM_OF_USERS: int = 5
 NUM_OF_ANTENNAS: int = 16
-NUM_OF_SELECTED_ANTENNAS: int = 16
-CHANNEL_NOISE: float = dB2pow(-10)
+NUM_OF_SELECTED_ANTENNAS: int = 10
+CHANNEL_NOISE: float = dB2pow(0)
 SENSING_NOISE: float = dB2pow(10)
 REFLECTION_COEFFICIENT: float = dB2pow(0)
 QOS_THRESHOLD: float = dB2pow(12)
@@ -19,12 +19,13 @@ indices: np.ndarray = np.arange(0, (NUM_OF_ANTENNAS - 1) + 1).reshape(-1, 1)
 STEERING_VECTOR: np.ndarray = np.exp(-1j * np.pi * indices * np.sin(DOA))
 DIFF_STEERING_VECTOR: np.ndarray = -1j * np.pi * indices * np.cos(DOA) * STEERING_VECTOR
 
-fas = FluidAntennaSystem(numOfYaxisAntennas=NUM_OF_ANTENNAS, numOfUsers=NUM_OF_USERS)
-CHANNEL, _, _, _ = fas.get_channel()
+fas = FluidAntennaSystem(num_of_yaxis_antennas=NUM_OF_ANTENNAS, num_of_users=NUM_OF_USERS,noise_variance=CHANNEL_NOISE)
+CHANNEL = fas.get_channel()
+print(CHANNEL)
 
 Parameters = {
     "numOfAntennas": NUM_OF_ANTENNAS,
-    "numOfUsers": NUM_OF_USERS,
+    "num_of_users": NUM_OF_USERS,
     "numOfSelectedAntennas": NUM_OF_SELECTED_ANTENNAS,
     "qosThreshold": QOS_THRESHOLD,
     "eveSensingThreshold": EVE_SENSING_THRESHOLD,

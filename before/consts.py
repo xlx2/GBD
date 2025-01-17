@@ -22,7 +22,7 @@ fas = FluidAntennaSystem(numOfYaxisAntennas=NUM_OF_ANTENNAS, numOfUsers=NUM_OF_U
 CHANNEL, _, _, _ = fas.get_channel()
 
 Parameters = {"numOfAntennas": NUM_OF_ANTENNAS,
-              "numOfUsers": NUM_OF_USERS,
+              "num_of_users": NUM_OF_USERS,
               "numOfSelectedAntennas": NUM_OF_SELECTED_ANTENNAS,
               "qosThreshold": QOS_THRESHOLD,
               "sensingUpperThreshold": SENSING_UPPER_THRESHOLD,

@@ -7,7 +7,7 @@ from before.utils import create_boolean_vector, create_block_diag_matrix
 class GBDSolver:
     def __init__(self, parameters):
         self.H = parameters['channel']  # Channel Matrix (N x K)
-        self.K = parameters['numOfUsers']  # User Number
+        self.K = parameters['num_of_users']  # User Number
         self.N = parameters['numOfAntennas']  # Port Number
         self.N_sel = parameters['numOfSelectedAntennas']  # Selected Port Number
         self.gamma = parameters['qosThreshold']  # QoS Threshold
