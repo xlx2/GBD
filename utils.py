@@ -1,5 +1,4 @@
 import numpy as np
-import cvxpy as cp
 
 
 def pow2dB(x):
@@ -18,26 +17,28 @@ def dBm2pow(x):
     return 10 ** (x / 10) / 1e3
 
 
-def eigenvalue_decomposition(XX_H) -> np.ndarray:
+def eigenvalue_decomposition(xxH: np.ndarray) -> np.ndarray:
     """
-    This function decomposes the semi-definite hermitian matrix XX_H into a
-    matrix X, where the eigenvectors and square roots of the eigenvalues.
-    X @ X_H = XX_H
-
-    :param XX_H: Semi-definite hermitian matrix
-    :return: X @ X_H = XX_H
+    This function decomposes the semi-definite hermitian matrix xxH into a matrix x,
+    where the eigenvectors and square roots of the eigenvalues. x @ xH = xxH
+    :param xxH: Semi-definite hermitian matrix
+    :return: x
     """
-    if not isinstance(XX_H, np.ndarray):
+    if not isinstance(xxH, np.ndarray):
         raise TypeError("Input must be a numpy ndarray.")
-    eigenvalues, eigenvectors = np.linalg.eig(XX_H)
-    X = eigenvectors @ np.diag(np.sqrt(eigenvalues))
-    return X
+    if not np.allclose(xxH, np.conj(xxH.T)):
+        raise ValueError("Input matrix must be Hermitian (symmetric if real-valued).")
+    eigenvalues, eigenvectors = np.linalg.eig(xxH)
+    if np.any(eigenvalues < 0):
+        raise ValueError("Input matrix must be positive semi-definite.")
+    x = eigenvectors @ np.diag(np.sqrt(eigenvalues))
+    return x
 
 
 def create_boolean_vector(length_of_vector: int, num_of_ones: int) -> np.ndarray:
     """
-    This function generates a boolean vector of size N,
-    containing numOfOnes random distributed 1, and the rest 0.
+    This function generates a boolean column vector of size N,
+    containing num_of_ones random distributed 1, and the rest 0.
     :param length_of_vector: Length of the vector
     :param num_of_ones: Number of random ones
     :return: Boolean vector
@@ -55,9 +56,9 @@ def create_boolean_vector(length_of_vector: int, num_of_ones: int) -> np.ndarray
 def create_block_diag_matrix(x: np.ndarray, repeat: int = None) -> np.ndarray:
     """
     This function creates a block diagonal matrix from an input x.
-    If x is a column vector, it first repeats the vector to form a matrix with a shape of (row, repeat), then it
-    repeats the matrix to form a block diagonal matrix.
-    If x is a matrix, it directly forms the block diagonal matrix.
+    1. If x is a column vector, it first repeats the vector to form a matrix with a shape of (row, repeat),
+    then it repeats the matrix to form a block diagonal matrix.
+    2. If x is a matrix, it directly forms the block diagonal matrix.
     :param x: Input 2D numpy ndarray
     :param repeat: Number of times to repeat the vector, and None for matrix
     :return: Block diagonal matrix
