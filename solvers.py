@@ -9,21 +9,24 @@ class GBDSolver:
         self.H = parameters['channel']  # Channel Matrix (N x K)
         self.K = parameters['num_of_users']  # User Number
         self.N = parameters['num_of_antennas']  # Port Number
-        self.N_sel = parameters['num_of_selected_antennas']  # Selected Port Number
+        self.N_sel = parameters['num_of_selected_antennas']  # Selected Antenna Number
+        self.L = parameters['snapshot']  # Snapshot Length
+
         self.gamma = parameters['qos_threshold']  # QoS Threshold
-        self.snr_eve = parameters['eve_sensing_threshold']  # Sensing Threshold
-        self.snr_crb = parameters['crb_threshold']  # CRB Threshold
+        self.snr_eve = parameters['eve_sensing_threshold']  # Eve Sensing Threshold
+        self.snr_crb = parameters['crb_threshold']  # User CRB Threshold
         self.sigmaC2 = parameters['channel_noise']  # Channel Noise
         self.sigmaR2 = parameters['sensing_noise']  # Sensing Noise
-        self.beta = parameters['reflection_coefficient']
+        self.beta = parameters['reflection_coefficient'] # Reflection Coefficient
+
         self.theta = parameters['doa']  # DOA (1 x M)
-        a = parameters['steering_vector']
-        a_diff = parameters['diff_steering_vector']
+        a = parameters['steering_vector'] # Steering Vector (N x M)
+        a_diff = parameters['diff_steering_vector'] # Steering Vector Diff (N x M)
         self.a_eve = a[:, 0:1]
         self.a_target = a[:, 1:2]
         self.a_eve_diff = a_diff[:, 0:1]
         self.a_target_diff = a_diff[:, 1:2]
-        self.L = parameters['snapshot']
+        
 
         self.feasibilityCut = {
             'W': [],
@@ -35,7 +38,7 @@ class GBDSolver:
             'alpha': []
         }
 
-    def prime_problem_solver(self, lambda_old=None, verbose=False) -> (bool, float):
+    def prime_problem_solver(self, lambda_old=None, verbose=False):
         # Initialize Boolean Variable
         if lambda_old is None:
             lambda_old = create_boolean_vector(self.N, self.N_sel)
@@ -139,7 +142,7 @@ class GBDSolver:
 
         return feasibility
 
-    def master_problem_solver(self, verbose=False) -> (np.ndarray, float):
+    def master_problem_solver(self, verbose=False):
         # Initialize Boolean Variable
         lambda_old = cp.Variable((self.N, 1), boolean=True)
         eta = cp.Variable()
