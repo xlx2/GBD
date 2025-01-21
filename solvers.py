@@ -14,7 +14,7 @@ class GBDSolver:
 
         self.gamma = parameters['qos_threshold']  # QoS Threshold
         self.snr_eve = parameters['eve_sensing_threshold']  # Eve Sensing Threshold
-        self.snr_crb = parameters['crb_threshold']  # User CRB Threshold
+        self.tau = parameters['crb_threshold']  # User CRB Threshold
         self.sigmaC2 = parameters['channel_noise']  # Channel Noise
         self.sigmaR2 = parameters['sensing_noise']  # Sensing Noise
         self.beta = parameters['reflection_coefficient'] # Reflection Coefficient
@@ -26,7 +26,9 @@ class GBDSolver:
         self.a_target = a[:, 1:2]
         self.a_eve_diff = a_diff[:, 0:1]
         self.a_target_diff = a_diff[:, 1:2]
-        
+        self.A = self.beta * self.a_target @ self.a_target.T.conj()  # Target Steering Matrix (N x N)
+        self.A_diff = (self.beta * self.a_target @ self.a_target_diff.T.conj() +
+                        self.beta * self.a_target_diff @ self.a_target.T.conj())
 
         self.feasibilityCut = {
             'W': [],
@@ -46,7 +48,8 @@ class GBDSolver:
         # Define CVXPY Variables
         W = cp.Variable((self.N, self.K + self.N), complex=True)
         Q = cp.Variable((self.N, self.K + self.N), complex=True)
-        # t = cp.Variable(1, complex=False)
+        Rx = cp.Variable((self.N, self.N), hermitian=True)
+
         # Constraints
         constraints = []
 
@@ -64,8 +67,14 @@ class GBDSolver:
         constraints.append(Q == np.diag(lambda_old[:, 0]) @ W)
 
         # Eve Sensing SNR Constraint
-        constraints.append(np.abs(self.beta)**2 * cp.sum_squares(np.conj(self.a_eve.T) @ np.diag(lambda_old[:, 0]) @ W)
+        constraints.append(np.abs(self.beta)**2 * cp.sum_squares(self.a_eve.T.conj() @ np.diag(lambda_old[:, 0]) @ W)
                            - self.snr_eve * self.sigmaR2 <= 0)
+
+        # User CRB Constraint
+        constraints.append(cp.bmat([
+        [cp.trace(self.A_diff.conj().T @ self.A_diff @ Rx) - self.sigmaR2 / (2 * self.L * np.abs(self.beta)**2 * self.tau) , cp.trace(self.A_diff.conj().T @ self.A @ Rx)],
+        [cp.trace(self.A_diff.conj().T @ self.A @ Rx), cp.trace(self.A.conj().T @ self.A @ Rx)]]) >> 0)
+        constraints.append(Rx >> 0)
 
         # Imaging Part Constraint
         for k in range(self.K):
